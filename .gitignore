@@ -13,5 +13,11 @@
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
+.DS_Store
+*/mysql/data
+secret.json
+lib
 
-mysql-data
+debezium-server/*
+
+.envrc
