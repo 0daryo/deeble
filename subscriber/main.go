@@ -15,8 +15,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to create client: %v", err)
 	}
-	sub := client.Subscription("inventory.all-sub")
-	log.Println("Subscribing to inventory.all-sub")
+	sub := client.Subscription("tutorial.inventory.customers-sub")
+	log.Println("Subscribing to tutorial.inventory.customers-sub")
 	err = sub.Receive(ctx, func(ctx context.Context, m *pubsub.Message) {
 		fmt.Printf("Got message: %q\n", string(m.Data))
 		m.Ack() // Acknowledge that we've consumed the message.

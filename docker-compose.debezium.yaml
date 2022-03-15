@@ -1,0 +1,13 @@
+version: '3.4'
+services:
+  debezium-server:
+    container_name: debezium-server
+    image: debezium/server:${DEBEZIUM_VERSION}
+    ports:
+      - 8080:8080
+    volumes:
+      - ./debezium-server/conf:/debezium/conf
+      # - ./data:/debezium/data
+      - ./debezium-server/secret.json:/debezium/secret.json
+    environment:
+      - GOOGLE_APPLICATION_CREDENTIALS=/debezium/secret.json
