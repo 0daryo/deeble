@@ -17,7 +17,7 @@ type Consumer struct {
 }
 
 func (c *Consumer) Consume(ctx context.Context, message producer.Message) error {
-	switch message.EventType() {
+	switch message.EventType {
 	case producer.Insert:
 		return c.insert(ctx, message)
 	}
@@ -26,10 +26,7 @@ func (c *Consumer) Consume(ctx context.Context, message producer.Message) error 
 
 func (c *Consumer) insert(ctx context.Context, message producer.Message) error {
 	_, err := c.cli.Apply(ctx, []*spanner.Mutation{
-		spanner.Insert("Customers", []string{"CustomerId", "Name"}, []interface{}{
-			message.Source.Collection,
-			message.Source.Name,
-		}),
+		spanner.Insert(message.TableName, message.TargetKeys(), message.TargetValues()),
 	})
 	return err
 }
