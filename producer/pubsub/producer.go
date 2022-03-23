@@ -6,7 +6,7 @@ import (
 	"log"
 
 	"cloud.google.com/go/pubsub"
-	"github.com/0daryo/deeble/converter/producer"
+	"github.com/0daryo/deeble/producer"
 )
 
 type Poller struct {

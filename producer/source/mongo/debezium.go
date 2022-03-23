@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"strings"
 
-	"github.com/0daryo/deeble/converter/producer"
+	"github.com/0daryo/deeble/producer"
 )
 
 type Producer struct{}

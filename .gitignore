@@ -18,6 +18,6 @@
 secret.json
 lib
 
-debezium-server/*
+*/debezium-server/*
 
 .envrc

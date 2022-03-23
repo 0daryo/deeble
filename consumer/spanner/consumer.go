@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"cloud.google.com/go/spanner"
-	"github.com/0daryo/deeble/converter/producer"
+	"github.com/0daryo/deeble/producer"
 )
 
 var (
