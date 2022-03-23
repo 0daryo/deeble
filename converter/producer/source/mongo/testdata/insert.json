@@ -1,0 +1,26 @@
+{
+  "after": "{\"_id\": 1015,\"firstName\": \"hoge\",\"lastName\": \"fuga\",\"email\": \"hoge@example.com\"}",
+  "patch": null,
+  "filter": null,
+  "updateDescription": null,
+  "source": {
+    "version": "1.8.1.Final",
+    "connector": "mongodb",
+    "name": "tutorial",
+    "ts_ms": 1647422872000,
+    "snapshot": "false",
+    "db": "inventory",
+    "sequence": null,
+    "rs": "rs0",
+    "collection": "customers",
+    "ord": 1,
+    "h": null,
+    "tord": null,
+    "stxnid": null,
+    "lsid": null,
+    "txnNumber": null
+  },
+  "op": "c",
+  "ts_ms": 1647422872530,
+  "transaction": null
+}

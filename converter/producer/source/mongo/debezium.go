@@ -1,6 +1,21 @@
 package mongo
 
-import "strings"
+import (
+	"encoding/json"
+	"strings"
+
+	"github.com/0daryo/deeble/converter/producer"
+)
+
+type Producer struct{}
+
+func (p *Producer) Produce(b []byte) (*producer.Message, error) {
+	var m Message
+	if err := json.Unmarshal(b, &m); err != nil {
+		return nil, err
+	}
+	return m.produce()
+}
 
 type Message struct {
 	After             string             `json:"after"`
@@ -28,34 +43,43 @@ type UpdateDescription struct {
 	UpdatedFields   string      `json:"updatedFields"`
 }
 
-type (
-	EventType string
-)
-
-var (
-	Unknown EventType = "UNKNWON"
-	Insert  EventType = "INSERT"
-	Update  EventType = "UPDATE"
-	Delete  EventType = "DELETE"
-)
-
-func (m *Message) EventType() EventType {
+func (m *Message) eventType() producer.EventType {
 	switch m.Op {
 	case "c":
-		return Insert
+		return producer.Insert
 	case "u":
-		return Update
+		return producer.Update
 	case "d":
-		return Delete
+		return producer.Delete
 	default:
-		return Unknown
+		return producer.Unknown
 	}
 }
 
-func (m *Message) TableName() string {
+func (m *Message) tableName() string {
 	if m.Source.Collection == "" {
 		return m.Source.Collection
 	}
 	runes := []rune(m.Source.Collection)
 	return strings.ToUpper(string(runes[0])) + string(runes[1:])
+}
+
+func (m *Message) targets() (map[string]interface{}, error) {
+	ret := map[string]interface{}{}
+	if err := json.Unmarshal([]byte(m.After), &ret); err != nil {
+		return nil, err
+	}
+	return ret, nil
+}
+
+func (m *Message) produce() (*producer.Message, error) {
+	targets, err := m.targets()
+	if err != nil {
+		return nil, err
+	}
+	return &producer.Message{
+		TableName: m.tableName(),
+		EventType: m.eventType(),
+		Targets:   targets,
+	}, nil
 }

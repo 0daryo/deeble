@@ -14,7 +14,27 @@ var (
 type Message struct {
 	TableName string
 	EventType EventType
-	Updates   map[string]interface{}
-	Inserts   map[string]interface{}
-	DeleteKey interface{}
+	// key value pairs.
+	// to insert, update, delete.
+	Targets map[string]interface{}
+}
+
+func (m *Message) TargetKeys() []string {
+	keys := make([]string, 0, len(m.Targets))
+	for k := range m.Targets {
+		keys = append(keys, k)
+	}
+	return keys
+}
+
+func (m *Message) TargetValues() []interface{} {
+	vals := make([]interface{}, 0, len(m.Targets))
+	for _, v := range m.Targets {
+		vals = append(vals, v)
+	}
+	return vals
+}
+
+type Producer interface {
+	Produce([]byte) (*Message, error)
 }

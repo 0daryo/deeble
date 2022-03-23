@@ -2,7 +2,6 @@ package pubsub
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 
@@ -10,22 +9,41 @@ import (
 	"github.com/0daryo/deeble/converter/producer"
 )
 
-func Polling(ctx context.Context, projectID string, subscriptionName string, resultChan chan producer.Message, errChan chan error) error {
+type Poller struct {
+	sub *pubsub.Subscription
+	producer.Producer
+	ResultChan chan *producer.Message
+	ErrChan    chan error
+}
+
+func NewPoller(ctx context.Context, projectID string, subscriptionName string, p producer.Producer) (*Poller, error) {
 	client, err := pubsub.NewClient(ctx, projectID)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	fmt.Printf("projectID %+v\n", projectID)
-	fmt.Printf("subscriptionName %+v\n", subscriptionName)
 	sub := client.Subscription(subscriptionName)
 	log.Println("Subscribing to " + subscriptionName)
-	if err := sub.Receive(ctx, func(ctx context.Context, m *pubsub.Message) {
-		var msg producer.Message
-		if err := json.Unmarshal(m.Data, &msg); err != nil {
-			errChan <- fmt.Errorf("failed to unmarshal message: %w", err)
+	return &Poller{
+		sub:        sub,
+		Producer:   p,
+		ResultChan: make(chan *producer.Message),
+		ErrChan:    make(chan error),
+	}, nil
+}
+
+func (p *Poller) Close() {
+	close(p.ResultChan)
+	close(p.ErrChan)
+}
+
+func (p *Poller) Poll(ctx context.Context) error {
+	if err := p.sub.Receive(ctx, func(ctx context.Context, m *pubsub.Message) {
+		message, err := p.Producer.Produce(m.Data)
+		if err != nil {
+			p.ErrChan <- fmt.Errorf("failed to unmarshal message: %w", err)
 			return
 		}
-		resultChan <- msg
+		p.ResultChan <- message
 		m.Ack()
 	}); err != nil {
 		return fmt.Errorf("failed to subscribe: %w", err)
