@@ -80,7 +80,8 @@ func (m *Message) targets() (map[string]interface{}, error) {
 	return ret, nil
 }
 
-// map[_id:map[$oid:623bea8c0c02dba6bda13b63] first_name:hoge] to map[id:623bea8c0c02dba6bda13b63 first_name:hoge]
+// mongo document can nest and bson has its type.
+// e.g. map[_id:map[$oid:623bea8c0c02dba6bda13b63] first_name:hoge] to map[id:623bea8c0c02dba6bda13b63 first_name:hoge]
 func parseNestedType(m map[string]interface{}) map[string]interface{} {
 	msi := map[string]interface{}{}
 	for k, v := range m {
