@@ -1,0 +1,19 @@
+name: merge
+
+on: 
+  issue_comment:
+    types: [created, edited]
+
+jobs:
+  merge:
+    if: ${{ (github.event.issue.pull_request) && (github.event.comment.body == '/merge') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create merge commit with labels
+        uses: bema/github-actions-merger:latest
+        with: 
+          "github_token": ${{ secrets.GITHUB_TOKEN }}
+          "owner": ${{ github.event.repository.owner.login }}
+          "repo": ${{ github.event.repository.name }}
+          "pr_number": ${{ github.event.issue.number }}
+          "comment": ${{ github.event.comment.body }}
