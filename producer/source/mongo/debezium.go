@@ -7,9 +7,11 @@ import (
 	"github.com/0daryo/deeble/producer"
 )
 
+var _ producer.Producer = (*Producer)(nil)
+
 type Producer struct{}
 
-func (p *Producer) Produce(b []byte) (*producer.Message, error) {
+func (p *Producer) Produce(b []byte) ([]*producer.Message, error) {
 	var m Message
 	if err := json.Unmarshal(b, &m); err != nil {
 		return nil, err
@@ -69,17 +71,47 @@ func (m *Message) targets() (map[string]interface{}, error) {
 	if err := json.Unmarshal([]byte(m.After), &ret); err != nil {
 		return nil, err
 	}
+	for k, v := range ret {
+		// mongo bson can have start with $.
+		if strings.HasPrefix(k, "$") {
+			ret[k] = v
+		}
+	}
 	return ret, nil
 }
 
-func (m *Message) produce() (*producer.Message, error) {
+// map[_id:map[$oid:623bea8c0c02dba6bda13b63] first_name:hoge] to map[id:623bea8c0c02dba6bda13b63 first_name:hoge]
+func parseNestedType(m map[string]interface{}) map[string]interface{} {
+	msi := map[string]interface{}{}
+	for k, v := range m {
+		vv, ok := v.(map[string]interface{})
+		if !ok {
+			msi[k] = v
+			continue
+		}
+		msi[k] = getFlat(vv, k)
+	}
+	return msi
+}
+
+// return nested first map value.
+func getFlat(m map[string]interface{}, key string) interface{} {
+	for _, v := range m {
+		return v
+	}
+	return nil
+}
+
+func (m *Message) produce() ([]*producer.Message, error) {
 	targets, err := m.targets()
 	if err != nil {
 		return nil, err
 	}
-	return &producer.Message{
-		TableName: m.tableName(),
-		EventType: m.eventType(),
-		Targets:   targets,
+	return []*producer.Message{
+		{
+			TableName: m.tableName(),
+			EventType: m.eventType(),
+			Targets:   parseNestedType(targets),
+		},
 	}, nil
 }

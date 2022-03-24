@@ -12,7 +12,7 @@ import (
 type Poller struct {
 	sub *pubsub.Subscription
 	producer.Producer
-	ResultChan chan *producer.Message
+	ResultChan chan []*producer.Message
 	ErrChan    chan error
 }
 
@@ -26,7 +26,7 @@ func NewPoller(ctx context.Context, projectID string, subscriptionName string, p
 	return &Poller{
 		sub:        sub,
 		Producer:   p,
-		ResultChan: make(chan *producer.Message),
+		ResultChan: make(chan []*producer.Message),
 		ErrChan:    make(chan error),
 	}, nil
 }

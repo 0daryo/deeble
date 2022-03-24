@@ -14,6 +14,8 @@ func TestProducer_Produce(t *testing.T) {
 	assert.Nil(t, err)
 	testUpdate, err := os.ReadFile("testdata/update.json")
 	assert.Nil(t, err)
+	testBson, err := os.ReadFile("testdata/objectid.json")
+	assert.Nil(t, err)
 	type args struct {
 		b []byte
 	}
@@ -21,7 +23,7 @@ func TestProducer_Produce(t *testing.T) {
 		name    string
 		p       *Producer
 		args    args
-		want    *producer.Message
+		want    []*producer.Message
 		wantErr bool
 	}{
 		{
@@ -30,14 +32,16 @@ func TestProducer_Produce(t *testing.T) {
 			args: args{
 				b: testInsert,
 			},
-			want: &producer.Message{
-				TableName: "Customers",
-				EventType: producer.Insert,
-				Targets: map[string]interface{}{
-					"_id":       float64(1015),
-					"firstName": "hoge",
-					"lastName":  "fuga",
-					"email":     "hoge@example.com",
+			want: []*producer.Message{
+				{
+					TableName: "Customers",
+					EventType: producer.Insert,
+					Targets: map[string]interface{}{
+						"_id":       float64(1015),
+						"firstName": "hoge",
+						"lastName":  "fuga",
+						"email":     "hoge@example.com",
+					},
 				},
 			},
 		},
@@ -47,14 +51,33 @@ func TestProducer_Produce(t *testing.T) {
 			args: args{
 				b: testUpdate,
 			},
-			want: &producer.Message{
-				TableName: "Customers",
-				EventType: producer.Update,
-				Targets: map[string]interface{}{
-					"_id":       float64(1015),
-					"firstName": "hoge",
-					"lastName":  "fuga",
-					"email":     "hoge@example.com",
+			want: []*producer.Message{
+				{
+					TableName: "Customers",
+					EventType: producer.Update,
+					Targets: map[string]interface{}{
+						"_id":       float64(1015),
+						"firstName": "hoge",
+						"lastName":  "fuga",
+						"email":     "hoge@example.com",
+					},
+				},
+			},
+		},
+		{
+			name: "success bson",
+			p:    &Producer{},
+			args: args{
+				b: testBson,
+			},
+			want: []*producer.Message{
+				{
+					TableName: "Customers",
+					EventType: producer.Update,
+					Targets: map[string]interface{}{
+						"_id":        "623bea8c0c02dba6bda13b63",
+						"first_name": "hoge",
+					},
 				},
 			},
 		},

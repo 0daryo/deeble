@@ -35,6 +35,8 @@ func (m *Message) TargetValues() []interface{} {
 	return vals
 }
 
+// producer may return multiple messages.
+// e.g. 1 mongo document can be nest and split to multiple tables.
 type Producer interface {
-	Produce([]byte) (*Message, error)
+	Produce([]byte) ([]*Message, error)
 }
