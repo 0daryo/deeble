@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Create merge commit with labels
-        uses: abema/github-actions-merger:latest
+        uses: docker://abema/github-actions-merger:latest
         with: 
           "github_token": ${{ secrets.GITHUB_TOKEN }}
           "owner": ${{ github.event.repository.owner.login }}
