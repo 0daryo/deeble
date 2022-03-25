@@ -16,6 +16,8 @@ func TestProducer_Produce(t *testing.T) {
 	assert.Nil(t, err)
 	testBson, err := os.ReadFile("testdata/objectid.json")
 	assert.Nil(t, err)
+	testNest, err := os.ReadFile("testdata/nest.json")
+	assert.Nil(t, err)
 	type args struct {
 		b []byte
 	}
@@ -77,6 +79,37 @@ func TestProducer_Produce(t *testing.T) {
 					Targets: map[string]interface{}{
 						"_id":        "623bea8c0c02dba6bda13b63",
 						"first_name": "hoge",
+					},
+				},
+			},
+		},
+		{
+			name: "success nested",
+			p:    &Producer{},
+			args: args{
+				b: testNest,
+			},
+			want: []*producer.Message{
+				{
+					TableName: "Customers",
+					EventType: producer.Update,
+					Targets: map[string]interface{}{
+						"_id":        "623d8883f25162b8f356ce91",
+						"first_name": "mike",
+					},
+				},
+				{
+					TableName: "Nest",
+					EventType: producer.Update,
+					Targets: map[string]interface{}{
+						"last_name": "fuga",
+					},
+				},
+				{
+					TableName: "Nest1",
+					EventType: producer.Update,
+					Targets: map[string]interface{}{
+						"hoge": "fuga",
 					},
 				},
 			},

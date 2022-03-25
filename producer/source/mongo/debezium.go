@@ -2,6 +2,7 @@ package mongo
 
 import (
 	"encoding/json"
+	"sort"
 	"strings"
 
 	"github.com/0daryo/deeble/producer"
@@ -12,22 +13,38 @@ var _ producer.Producer = (*Producer)(nil)
 type Producer struct{}
 
 func (p *Producer) Produce(b []byte) ([]*producer.Message, error) {
-	var m Message
+	var m message
 	if err := json.Unmarshal(b, &m); err != nil {
 		return nil, err
 	}
 	return m.produce()
 }
 
-type Message struct {
-	After             string             `json:"after"`
-	Source            Source             `json:"source"`
-	UpdateDescription *UpdateDescription `json:"updateDescription"`
-	Op                string             `json:"op"`
-	TsMS              int64              `json:"ts_ms"`
+type (
+	message struct {
+		After             string             `json:"after"`
+		Source            source             `json:"source"`
+		UpdateDescription *updateDescription `json:"updateDescription"`
+		Op                string             `json:"op"`
+		TsMS              int64              `json:"ts_ms"`
+	}
+	messageConverter struct {
+		tableName string
+		eventType producer.EventType
+		targets   map[string]interface{}
+		depth     int64
+	}
+	messageConverters []*messageConverter
+)
+
+func (mcs *messageConverters) slice() []*messageConverter {
+	if mcs == nil {
+		return nil
+	}
+	return []*messageConverter(*mcs)
 }
 
-type Source struct {
+type source struct {
 	Version    string `json:"version"`
 	Connector  string `json:"connector"`
 	Name       string `json:"name"`
@@ -39,14 +56,14 @@ type Source struct {
 	Ord        int64  `json:"ord"`
 }
 
-type UpdateDescription struct {
+type updateDescription struct {
 	RemovedFields   interface{} `json:"removedFields"`
 	TruncatedArrays interface{} `json:"truncatedArrays"`
 	UpdatedFields   string      `json:"updatedFields"`
 }
 
-func (m *Message) eventType() producer.EventType {
-	switch m.Op {
+func eventType(op string) producer.EventType {
+	switch op {
 	case "c":
 		return producer.Insert
 	case "u":
@@ -58,26 +75,12 @@ func (m *Message) eventType() producer.EventType {
 	}
 }
 
-func (m *Message) tableName() string {
-	if m.Source.Collection == "" {
-		return m.Source.Collection
+func tableName(collectionName string) string {
+	if collectionName == "" {
+		return ""
 	}
-	runes := []rune(m.Source.Collection)
+	runes := []rune(collectionName)
 	return strings.ToUpper(string(runes[0])) + string(runes[1:])
-}
-
-func (m *Message) targets() (map[string]interface{}, error) {
-	ret := map[string]interface{}{}
-	if err := json.Unmarshal([]byte(m.After), &ret); err != nil {
-		return nil, err
-	}
-	for k, v := range ret {
-		// mongo bson can have start with $.
-		if strings.HasPrefix(k, "$") {
-			ret[k] = v
-		}
-	}
-	return ret, nil
 }
 
 // mongo document can nest and bson has its type.
@@ -86,7 +89,7 @@ func parseNestedType(m map[string]interface{}) map[string]interface{} {
 	msi := map[string]interface{}{}
 	for k, v := range m {
 		vv, ok := v.(map[string]interface{})
-		if !ok {
+		if !ok || !hasSpecialCharKey(vv) {
 			msi[k] = v
 			continue
 		}
@@ -103,16 +106,82 @@ func getFlat(m map[string]interface{}, key string) interface{} {
 	return nil
 }
 
-func (m *Message) produce() ([]*producer.Message, error) {
-	targets, err := m.targets()
-	if err != nil {
+// if map key has bson special characters
+func hasSpecialCharKey(m map[string]interface{}) bool {
+	for k := range m {
+		if strings.HasPrefix(k, "$") {
+			return true
+		}
+	}
+	return false
+}
+
+func (m *message) produce() ([]*producer.Message, error) {
+	after := make(map[string]interface{})
+	if err := json.Unmarshal([]byte(m.After), &after); err != nil {
 		return nil, err
 	}
-	return []*producer.Message{
-		{
-			TableName: m.tableName(),
-			EventType: m.eventType(),
-			Targets:   parseNestedType(targets),
-		},
-	}, nil
+	targets := after
+	mcs := messageConverters{}
+	mcs.fill(targets, m.Source.Collection, 0, eventType(m.Op))
+	mcsSlice := mcs.slice()
+	sort.SliceStable(mcsSlice, func(i, j int) bool { return mcsSlice[i].depth < mcsSlice[j].depth })
+	return messageConverters(mcsSlice).producerMessge(), nil
+}
+
+// fill build messageConverters with provided targets recursively.
+func (mcs *messageConverters) fill(m map[string]interface{}, collectionName string, depth int64, eventType producer.EventType) {
+	if mcs == nil {
+		return
+	}
+	mm := parseNestedType(m)
+	if nonest(mm) {
+		*mcs = append(*mcs, &messageConverter{
+			tableName: tableName(collectionName),
+			eventType: eventType,
+			targets:   mm,
+			depth:     depth,
+		})
+		return
+	}
+	mc := &messageConverter{
+		tableName: tableName(collectionName),
+		eventType: eventType,
+		depth:     depth,
+	}
+	targets := make(map[string]interface{})
+	for k, v := range mm {
+		switch v.(type) {
+		case map[string]interface{}:
+			mcs.fill(v.(map[string]interface{}), tableName(k), depth+1, eventType)
+		default:
+			targets[k] = v
+		}
+	}
+	mc.targets = targets
+	*mcs = append(*mcs, mc)
+}
+
+// check if map has no nested map[string]interface{}
+func nonest(m map[string]interface{}) bool {
+	for _, v := range m {
+		switch v.(type) {
+		case map[string]interface{}:
+			return false
+		}
+	}
+	return true
+}
+
+// convert messageConverters to producer.Messages slice
+func (mcs messageConverters) producerMessge() []*producer.Message {
+	ms := []*producer.Message{}
+	for _, mc := range mcs {
+		ms = append(ms, &producer.Message{
+			TableName: mc.tableName,
+			EventType: mc.eventType,
+			Targets:   mc.targets,
+		})
+	}
+	return ms
 }
