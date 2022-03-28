@@ -39,7 +39,7 @@ func TestProducer_Produce(t *testing.T) {
 					TableName: "Customers",
 					EventType: producer.Insert,
 					Targets: map[string]interface{}{
-						"_id":       float64(1015),
+						"Id":        float64(1015),
 						"firstName": "hoge",
 						"lastName":  "fuga",
 						"email":     "hoge@example.com",
@@ -58,7 +58,7 @@ func TestProducer_Produce(t *testing.T) {
 					TableName: "Customers",
 					EventType: producer.Update,
 					Targets: map[string]interface{}{
-						"_id":       float64(1015),
+						"Id":        float64(1015),
 						"firstName": "hoge",
 						"lastName":  "fuga",
 						"email":     "hoge@example.com",
@@ -77,7 +77,7 @@ func TestProducer_Produce(t *testing.T) {
 					TableName: "Customers",
 					EventType: producer.Update,
 					Targets: map[string]interface{}{
-						"_id":        "623bea8c0c02dba6bda13b63",
+						"Id":         "623bea8c0c02dba6bda13b63",
 						"first_name": "hoge",
 					},
 				},

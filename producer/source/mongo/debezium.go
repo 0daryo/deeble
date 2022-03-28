@@ -2,7 +2,6 @@ package mongo
 
 import (
 	"encoding/json"
-	"fmt"
 	"sort"
 	"strings"
 
@@ -136,16 +135,13 @@ func (m *message) produce() ([]*producer.Message, error) {
 	return messageConverters(mcsSlice).producerMessge(), nil
 }
 
-func id(m map[string]interface{}) string {
+func id(m map[string]interface{}) interface{} {
 	mm := parseNestedType(m)
-	fmt.Printf("%+v\n", mm)
 	id, ok := mm["_id"]
 	if !ok {
 		return genID()
 	}
 	switch id.(type) {
-	case string:
-		return id.(string)
 	case map[string]interface{}:
 		if oid, ok := id.(map[string]interface{})["$oid"]; ok {
 			if str, ook := oid.(string); ook {
@@ -155,7 +151,7 @@ func id(m map[string]interface{}) string {
 		}
 		return genID()
 	default:
-		return genID()
+		return id
 	}
 }
 
