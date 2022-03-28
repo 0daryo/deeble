@@ -2,15 +2,18 @@ package mongo
 
 import (
 	"encoding/json"
+	"fmt"
 	"sort"
 	"strings"
 
 	"github.com/0daryo/deeble/producer"
+	"github.com/google/uuid"
 )
 
 var _ producer.Producer = (*Producer)(nil)
 
-type Producer struct{}
+type Producer struct {
+}
 
 func (p *Producer) Produce(b []byte) ([]*producer.Message, error) {
 	var m message
@@ -123,18 +126,49 @@ func (m *message) produce() ([]*producer.Message, error) {
 	}
 	targets := after
 	mcs := messageConverters{}
-	mcs.fill(targets, m.Source.Collection, 0, eventType(m.Op))
+	id := id(targets)
+	delete(targets, "_id")
+	mcs.fill(targets, m.Source.Collection, 0, eventType(m.Op), map[string]interface{}{
+		"Id": id,
+	})
 	mcsSlice := mcs.slice()
 	sort.SliceStable(mcsSlice, func(i, j int) bool { return mcsSlice[i].depth < mcsSlice[j].depth })
 	return messageConverters(mcsSlice).producerMessge(), nil
 }
 
+func id(m map[string]interface{}) string {
+	mm := parseNestedType(m)
+	fmt.Printf("%+v\n", mm)
+	id, ok := mm["_id"]
+	if !ok {
+		return genID()
+	}
+	switch id.(type) {
+	case string:
+		return id.(string)
+	case map[string]interface{}:
+		if oid, ok := id.(map[string]interface{})["$oid"]; ok {
+			if str, ook := oid.(string); ook {
+				return str
+			}
+			return genID()
+		}
+		return genID()
+	default:
+		return genID()
+	}
+}
+
 // fill build messageConverters with provided targets recursively.
-func (mcs *messageConverters) fill(m map[string]interface{}, collectionName string, depth int64, eventType producer.EventType) {
+func (mcs *messageConverters) fill(m map[string]interface{}, collectionName string, depth int64, eventType producer.EventType, fks map[string]interface{}) {
 	if mcs == nil {
 		return
 	}
 	mm := parseNestedType(m)
+	// add foreign keys for interleave.
+	for k, v := range fks {
+		mm[k] = v
+	}
 	if nonest(mm) {
 		*mcs = append(*mcs, &messageConverter{
 			tableName: tableName(collectionName),
@@ -153,13 +187,32 @@ func (mcs *messageConverters) fill(m map[string]interface{}, collectionName stri
 	for k, v := range mm {
 		switch v.(type) {
 		case map[string]interface{}:
-			mcs.fill(v.(map[string]interface{}), tableName(k), depth+1, eventType)
+			nextFK := nextFK(tableName(collectionName), fks)
+			mcs.fill(v.(map[string]interface{}), tableName(k), depth+1, eventType, nextFK)
 		default:
 			targets[k] = v
 		}
 	}
 	mc.targets = targets
 	*mcs = append(*mcs, mc)
+}
+
+func nextFK(tableName string, fks map[string]interface{}) map[string]interface{} {
+	nextFK := make(map[string]interface{})
+	for k, v := range fks {
+		if k == "Id" {
+			nextFK[parentFK(tableName)] = v
+			continue
+		}
+		nextFK[k] = v
+	}
+	nextFK["Id"] = genID()
+	return nextFK
+}
+
+func parentFK(tableName string) string {
+	singlar := strings.TrimSuffix(tableName, "s")
+	return singlar + "Id"
 }
 
 // check if map has no nested map[string]interface{}
@@ -184,4 +237,9 @@ func (mcs messageConverters) producerMessge() []*producer.Message {
 		})
 	}
 	return ms
+}
+
+var genID = func() string {
+	uuid, _ := uuid.NewRandom()
+	return uuid.String()
 }

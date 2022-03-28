@@ -5,6 +5,7 @@ go 1.17
 require (
 	cloud.google.com/go/pubsub v1.19.0
 	cloud.google.com/go/spanner v1.30.0
+	github.com/google/uuid v1.1.2
 	github.com/stretchr/testify v1.7.0
 )
 
