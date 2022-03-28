@@ -39,7 +39,7 @@ func TestProducer_Produce(t *testing.T) {
 					TableName: "Customers",
 					EventType: producer.Insert,
 					Targets: map[string]interface{}{
-						"_id":       float64(1015),
+						"Id":        float64(1015),
 						"firstName": "hoge",
 						"lastName":  "fuga",
 						"email":     "hoge@example.com",
@@ -58,7 +58,7 @@ func TestProducer_Produce(t *testing.T) {
 					TableName: "Customers",
 					EventType: producer.Update,
 					Targets: map[string]interface{}{
-						"_id":       float64(1015),
+						"Id":        float64(1015),
 						"firstName": "hoge",
 						"lastName":  "fuga",
 						"email":     "hoge@example.com",
@@ -77,7 +77,7 @@ func TestProducer_Produce(t *testing.T) {
 					TableName: "Customers",
 					EventType: producer.Update,
 					Targets: map[string]interface{}{
-						"_id":        "623bea8c0c02dba6bda13b63",
+						"Id":         "623bea8c0c02dba6bda13b63",
 						"first_name": "hoge",
 					},
 				},
@@ -94,7 +94,7 @@ func TestProducer_Produce(t *testing.T) {
 					TableName: "Customers",
 					EventType: producer.Update,
 					Targets: map[string]interface{}{
-						"_id":        "623d8883f25162b8f356ce91",
+						"Id":         "623d8883f25162b8f356ce91",
 						"first_name": "mike",
 					},
 				},
@@ -102,14 +102,19 @@ func TestProducer_Produce(t *testing.T) {
 					TableName: "Nest",
 					EventType: producer.Update,
 					Targets: map[string]interface{}{
-						"last_name": "fuga",
+						"CustomerId": "623d8883f25162b8f356ce91",
+						"Id":         "12345",
+						"last_name":  "fuga",
 					},
 				},
 				{
 					TableName: "Nest1",
 					EventType: producer.Update,
 					Targets: map[string]interface{}{
-						"hoge": "fuga",
+						"CustomerId": "623d8883f25162b8f356ce91",
+						"NestId":     "12345",
+						"Id":         "12345",
+						"hoge":       "fuga",
 					},
 				},
 			},
@@ -126,6 +131,9 @@ func TestProducer_Produce(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p := &Producer{}
+			genID = func() string {
+				return "12345"
+			}
 			got, err := p.Produce(tt.args.b)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Producer.Produce() error = %v, wantErr %v", err, tt.wantErr)
